@@ -1,38 +1,47 @@
-import { useEffect, useState } from "react";
-import supabase from "../supabase/client"; // adjust path if needed
+import { useEffect } from "react";
 
 export default function KeyVerify() {
-  const [verified, setVerified] = useState(false);
-
   useEffect(() => {
     if (!window.AroLinks) return;
 
     window.AroLinks.init({
       container: "#arolinks-widget",
       keyUrl: "https://arolinks.lovable.app",
-      onVerified: async function (data) {
-        console.log("AroLinks verified:", data);
 
-        // Save to Supabase
-        const { error } = await supabase
-          .from("key_verifications")
-          .insert([{ aro_key: data.key, verified_at: new Date() }]);
+      onVerified: async function (data: any) {
+        const deviceFingerprint =
+          navigator.userAgent + screen.width + screen.height;
 
-        if (!error) setVerified(true);
-      },
+        try {
+          const res = await fetch(
+            "https://tweyvrhfjvqkweenlpgw.supabase.co/functions/v1/verify-access",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY
+              },
+              body: JSON.stringify({
+                key: data.key,
+                deviceFingerprint
+              })
+            }
+          );
+
+          if (!res.ok) {
+            alert("Key invalid / already used / wrong device");
+            return;
+          }
+
+          // ✅ SUCCESS
+          window.location.href = "/verify-success";
+
+        } catch {
+          alert("Verification failed");
+        }
+      }
     });
   }, []);
 
-  return (
-    <div>
-      {!verified ? (
-        <div id="arolinks-widget"></div>
-      ) : (
-        <div>
-          <h2>Premium Content Unlocked</h2>
-          {/* show protected content here */}
-        </div>
-      )}
-    </div>
-  );
+  return <div id="arolinks-widget"></div>;
 }
